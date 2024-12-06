@@ -1,0 +1,33 @@
+{
+  "name": "mcp-server-chatsum-bot",
+  "version": "1.0.0",
+  "description": "chatbot to save chat messages.",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "NODE_OPTIONS='--loader ts-node/esm' node src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcpservers/mcp-server-chatsum.git"
+  },
+  "keywords": [],
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/mcpservers/mcp-server-chatsum/issues"
+  },
+  "homepage": "https://github.com/mcpservers/mcp-server-chatsum#readme",
+  "dependencies": {
+    "@types/pg": "^8.11.0",
+    "dotenv": "^16.4.7",
+    "pg": "^8.11.3",
+    "qrcode-terminal": "^0.12.0",
+    "ts-node": "^10.9.2",
+    "wechaty": "^1.20.2",
+    "wechaty-puppet": "^1.20.2",
+    "wechaty-puppet-padlocal": "^1.20.1"
+  },
+  "devDependencies": {
+    "@types/qrcode-terminal": "^0.12.0"
+  }
+}
