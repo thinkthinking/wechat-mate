@@ -8,25 +8,125 @@
 - PostgreSQL 数据存储（自动保存聊天记录）
 - Docker 容器化部署
 - 时区自动配置为 Asia/Shanghai
+- 支持 ARM64 和 AMD64 架构
 
-## 部署方式
+## 快速部署指南
 
 ### 方式一：使用预构建的 Docker 镜像（推荐）
 
-最简单的方式是使用已经构建好的 Docker 镜像：
-
+1. 创建部署目录：
 ```bash
-# 1. 下载 docker-compose.yml
-wget https://raw.githubusercontent.com/thinkthinking/wechat-mate/master/docker-compose.yml
+mkdir wechat-mate && cd wechat-mate
+```
 
-# 2. 创建并启动容器
+2. 创建 docker-compose.yml 文件：
+```yaml
+version: '3.8'
+
+services:
+  app:
+    image: thinkthinking/wechat-mate:latest  # 或使用特定版本，如 :1.0.0
+    container_name: wechat_mate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data  # 持久化数据目录
+    environment:
+      - TZ=Asia/Shanghai
+      - POSTGRES_HOST=postgres
+      - DATABASE_URL=postgresql://chatbot:chatbot123@postgres:5432/chatbot
+      - NODE_ENV=production
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: wechat_postgres
+    environment:
+      POSTGRES_DB: chatbot
+      POSTGRES_USER: chatbot
+      POSTGRES_PASSWORD: chatbot123  # 建议在生产环境中修改此密码
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: Asia/Shanghai
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    name: wechat_mate_postgres_data
+```
+
+3. 启动服务：
+```bash
 docker-compose up -d
 ```
 
-服务启动后会自动：
-- 创建并初始化数据库
-- 创建聊天记录存储表
-- 配置正确的时区和编码
+服务启动后：
+- 数据库会自动初始化
+- 聊天记录会自动保存到数据库
+- 扫描终端显示的二维码登录微信
+
+### 版本选择
+
+镜像标签说明：
+- `latest`: 最新版本，随主分支更新
+- `1.0.0`: 具体版本号，稳定版本
+- `1.0`: 次要版本号，会随补丁更新
+- `1`: 主版本号，会随次要版本更新
+
+建议在生产环境使用具体的版本号，如：
+```yaml
+image: thinkthinking/wechat-mate:1.0.0
+```
+
+### 数据持久化
+
+默认情况下，以下数据会被持久化：
+- PostgreSQL 数据：保存在名为 `wechat_mate_postgres_data` 的 Docker 卷中
+- 应用数据：保存在部署目录的 `./data` 文件夹中
+
+### 自定义配置
+
+1. 修改数据库密码（建议）：
+   - 修改 `POSTGRES_PASSWORD` 和对应的 `DATABASE_URL`
+   ```yaml
+   environment:
+     POSTGRES_PASSWORD: your_secure_password
+     DATABASE_URL: postgresql://chatbot:your_secure_password@postgres:5432/chatbot
+   ```
+
+2. 修改时区（可选）：
+   ```yaml
+   environment:
+     TZ: Asia/Shanghai  # 改为你的时区
+   ```
+
+### 常用命令
+
+```bash
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f app  # 查看机器人日志
+docker-compose logs -f postgres  # 查看数据库日志
+
+# 停止服务
+docker-compose down
+
+# 更新到最新版本
+docker-compose pull  # 拉取最新镜像
+docker-compose up -d  # 重新启动服务
+
+# 完全重置（会删除所有数据）
+docker-compose down -v
+```
 
 ## 本地开发指南
 
@@ -117,6 +217,62 @@ Docker 部署会创建以下数据卷：
   - `./data`: 应用数据目录
 - 开发环境：
   - `wechat_mate_postgres_data_dev`: 开发环境 PostgreSQL 数据存储
+
+## CI/CD 流程
+
+项目使用 GitHub Actions 自动构建和发布 Docker 镜像。
+
+### 自动构建触发条件
+
+- 推送到 master 分支
+- 创建新的版本标签（格式：`v*.*.*`）
+- 创建 Pull Request 到 master 分支（仅构建，不推送）
+
+### 构建特性
+
+- 支持多架构：同时构建 `linux/amd64` 和 `linux/arm64` 架构的镜像
+- 自动标签管理：
+  - master 分支推送：更新 `latest` 标签
+  - 版本标签：自动创建对应的版本标签（例如 `v1.0.0` 会创建 `1`、`1.0`、`1.0.0` 三个标签）
+- 使用 GitHub Actions 缓存加速构建
+- 自动推送到 Docker Hub
+
+### 发布新版本
+
+要发布新版本，执行以下步骤：
+
+```bash
+# 1. 创建新的版本标签
+git tag v1.0.0
+
+# 2. 推送标签到 GitHub
+git push origin v1.0.0
+```
+
+这将自动触发构建流程，并推送以下标签的镜像到 Docker Hub：
+- `thinkthinking/wechat-mate:1`
+- `thinkthinking/wechat-mate:1.0`
+- `thinkthinking/wechat-mate:1.0.0`
+
+### 配置说明
+
+项目的 CI/CD 需要以下 GitHub Secrets 配置：
+
+1. `DOCKERHUB_USERNAME`: Docker Hub 用户名
+2. `DOCKERHUB_TOKEN`: Docker Hub 访问令牌
+
+要设置这些密钥：
+1. 打开 GitHub 仓库设置
+2. 进入 "Settings" -> "Secrets and variables" -> "Actions"
+3. 点击 "New repository secret"
+4. 添加上述密钥
+
+获取 Docker Hub 访问令牌：
+1. 登录 [Docker Hub](https://hub.docker.com)
+2. 进入 Account Settings -> Security
+3. 点击 "New Access Token"
+4. 设置令牌名称和权限（需要 Read & Write 权限）
+5. 保存生成的令牌
 
 ## 许可证
 
