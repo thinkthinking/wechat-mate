@@ -51,6 +51,7 @@ services:
       POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./install.postgres.sql:/docker-entrypoint-initdb.d/init.sql  # 数据库初始化脚本
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U chatbot"]
       interval: 5s
@@ -62,7 +63,13 @@ volumes:
     name: wechat_mate_postgres_data
 ```
 
-3. 启动服务：
+3. 下载数据库初始化脚本：
+```bash
+# 下载 install.postgres.sql 文件
+curl -o install.postgres.sql https://raw.githubusercontent.com/thinkthinking/wechat-mate/main/install.postgres.sql
+```
+
+4. 启动服务：
 ```bash
 docker-compose up -d
 ```
@@ -90,6 +97,42 @@ image: thinkthinking/wechat-mate:1.0.0
 默认情况下，以下数据会被持久化：
 - PostgreSQL 数据：保存在名为 `wechat_mate_postgres_data` 的 Docker 卷中
 - 应用数据：保存在部署目录的 `./data` 文件夹中
+
+如果数据库表未正确创建，可以按以下步骤手动初始化：
+
+1. 确保容器正在运行
+2. 执行以下命令初始化数据库：
+```bash
+# 进入 PostgreSQL 容器
+docker exec -it wechat_postgres bash
+
+# 连接到数据库
+psql -U chatbot -d chatbot
+
+# 运行初始化 SQL（如果表不存在）
+\i /docker-entrypoint-initdb.d/init.sql
+
+# 验证表是否创建成功
+\dt
+
+# 退出 psql
+\q
+
+# 退出容器
+exit
+```
+
+如果需要重新初始化数据库，可以删除数据卷后重新创建：
+```bash
+# 停止并删除容器
+docker compose down
+
+# 删除数据卷
+docker volume rm wechat_mate_postgres_data
+
+# 重新启动服务
+docker compose up -d
+```
 
 ### 自定义配置
 

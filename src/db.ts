@@ -27,7 +27,44 @@ export function getDb(): pkg.Pool {
     process.exit(-1);
   });
 
+  // 初始化数据库表
+  initializeDatabase().catch(err => {
+    console.error('Failed to initialize database:', err);
+    process.exit(-1);
+  });
+
   return pool;
+}
+
+async function initializeDatabase() {
+  const pool = getDb();
+  const createTableSQL = `
+    CREATE TABLE IF NOT EXISTS chat_messages (
+      id SERIAL PRIMARY KEY,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      msg_id TEXT NOT NULL,
+      room_id TEXT,
+      room_name TEXT,
+      room_avatar TEXT,
+      talker_id TEXT NOT NULL,
+      talker_name TEXT,
+      talker_avatar TEXT,
+      content TEXT,
+      msg_type INTEGER,
+      url_title TEXT,
+      url_desc TEXT,
+      url_link TEXT,
+      url_thumb TEXT
+    );
+  `;
+
+  try {
+    await pool.query(createTableSQL);
+    console.log('Database initialized successfully');
+  } catch (err) {
+    console.error('Error initializing database:', err);
+    throw err;
+  }
 }
 
 // 格式化时间戳为北京时间字符串
