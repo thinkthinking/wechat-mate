@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   app:
+    build: .
     image: thinkthinking/wechat-mate:latest
     container_name: wechat_mate
     depends_on:

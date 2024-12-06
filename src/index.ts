@@ -1,9 +1,6 @@
 import { ScanStatus, WechatyBuilder } from "wechaty";
 import QrcodeTerminal from "qrcode-terminal";
-import dotenv from "dotenv";
 import { handleReceiveMessage } from "./message.js";
-
-dotenv.config();
 
 const token = "";
 const bot = WechatyBuilder.build({

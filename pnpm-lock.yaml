@@ -11,9 +11,6 @@ importers:
       '@types/pg':
         specifier: ^8.11.0
         version: 8.11.10
-      dotenv:
-        specifier: ^16.4.7
-        version: 16.4.7
       pg:
         specifier: ^8.11.3
         version: 8.13.1
